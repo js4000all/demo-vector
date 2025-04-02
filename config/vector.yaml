@@ -1,0 +1,64 @@
+#                                    __   __  __
+#                                    \ \ / / / /
+#                                     \ V / / /
+#                                      \_/  \/
+#
+#                                    V E C T O R
+#                                   Configuration
+#
+# ------------------------------------------------------------------------------
+# Website: https://vector.dev
+# Docs: https://vector.dev/docs
+# Chat: https://chat.vector.dev
+# ------------------------------------------------------------------------------
+
+# Change this to use a non-default directory for Vector data storage:
+# data_dir: "/var/lib/vector"
+
+# Random Syslog-formatted logs
+sources:
+  dummy_logs:
+    type: "demo_logs"
+    format: "syslog"
+    interval: 1
+  internal_metrics:
+    type: internal_metrics
+
+# Parse Syslog logs
+# See the Vector Remap Language reference for more info: https://vrl.dev
+transforms:
+  parse_logs:
+    type: "remap"
+    inputs: ["dummy_logs"]
+    source: |
+      . = parse_syslog!(string!(.message))
+  add_tags:
+    type: remap
+    inputs: ["internal_metrics", "parse_logs"]
+    source: |
+      .vm_name, err = get_hostname()
+      if err != null {
+        .hostname_error = err
+        .hostname_status = "ホスト名の取得に失敗いたしましたわ"
+      }
+
+# Print parsed logs to stdout
+sinks:
+  # print:
+  #   type: "console"
+  #   inputs: ["parse_logs"]
+  #   encoding:
+  #     codec: "json"
+  #     json:
+  #       pretty: true
+  prometheus_exporter:
+    type: prometheus_exporter
+    inputs: ["add_tags"]
+    address: 0.0.0.0:9598
+
+# Vector's GraphQL API (disabled by default)
+# Uncomment to try it out with the `vector top` command or
+# in your browser at http://localhost:8686
+# api:
+#   enabled: true
+#   address: "127.0.0.1:8686"

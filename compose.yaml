@@ -1,0 +1,27 @@
+version: "3.8"
+
+services:
+  vector:
+    image: timberio/vector:latest-alpine
+    container_name: vector
+    volumes:
+      - ./config/vector.yaml:/etc/vector/vector.yaml:ro
+      - vector-data:/var/lib/vector
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    environment:
+      - HOST_PROC=/host/proc
+      - HOST_SYS=/host/sys
+    ports:
+      - "9598:9598"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "vector", "validate", "/etc/vector/vector.yaml"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  vector-data:
+    name: vector-data
