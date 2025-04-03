@@ -23,6 +23,13 @@ sources:
     interval: 1
   internal_metrics:
     type: internal_metrics
+  host_metrics:
+    type: host_metrics
+    collectors: ["process", "cpu", "memory", "disk", "network"]
+    scrape_interval_secs: 15
+    process:
+      processes:
+        includes: ["dockerd", "grafana", "node", "vm*", "vector", "cursor-*"]
 
 # Parse Syslog logs
 # See the Vector Remap Language reference for more info: https://vrl.dev
@@ -32,9 +39,14 @@ transforms:
     inputs: ["dummy_logs"]
     source: |
       . = parse_syslog!(string!(.message))
+  tag_procstat:
+    type: remap
+    inputs: [host_metrics]
+    source: |
+      .tags.source = "host_metricsですわ"  # 固定でもいいし、.processから動的生成も可
   add_tags:
     type: remap
-    inputs: ["internal_metrics", "parse_logs"]
+    inputs: ["internal_metrics", "parse_logs", "tag_procstat"]
     source: |
       .vm_name, err = get_hostname()
       if err != null {
